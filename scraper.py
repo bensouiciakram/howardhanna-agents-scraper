@@ -50,12 +50,13 @@ class InfosSpider(scrapy.Spider):
 
 
     def parse_agent(self,response):
-        inspect_response(response,self)
         agent_item = {}
+        agent_item['agent url'] = response.url
         agent_item['agent_id'] = findall('\d+',response.url)[0]
+        agent_item['agent_name'] = response.xpath('//h1/text()').get()
         agent_item['agent_phone'] = response.xpath(
-            'string(//a[@class="agent-phone"])|'
-            'string(//h1/following-sibling::div//a[contains(@href,"tel")])'
+            'string(//a[@class="agent-phone"]|'
+            '//h1/following-sibling::div//a[contains(@href,"tel")])'
             ).get()
         agent_item['agent_address'] = self.get_address(response)
         agent_item['agent_website'] = response.xpath('//a[contains(text(),"View My Website")]/@href').get()
@@ -67,6 +68,7 @@ class InfosSpider(scrapy.Spider):
             'string((//a[contains(text(),"Download My App")]/ancestor::div[1]'
             '/following-sibling::div[1]//strong[a])[2])'
         ).get()
+        agent_item['agent_email'] = ''
         if not agent_item['agent_website'] :
             yield agent_item 
         else :
@@ -80,8 +82,10 @@ class InfosSpider(scrapy.Spider):
 
 
     def parse_email(self,response):
+        # if 'Email Me' in response.text :
+        #     breakpoint()
         agent_item = response.meta['agent_item']
-        agent_item['agent_item'] = response.xpath('//a[contains(@href,"mailto")]/@href').get().replace('mailto:','') \
+        agent_item['agent_email'] = response.xpath('//a[contains(@href,"mailto")]/@href').get().replace('mailto:','') \
             if  response.xpath('//a[contains(@href,"mailto")]/@href') else ''
         yield agent_item
 
@@ -89,7 +93,7 @@ class InfosSpider(scrapy.Spider):
     def get_total_pages(self,response:HtmlResponse) -> int :
         return int(response.xpath('string(//ul[contains(@class,"pagination")]/li[last()-1])').get().strip())
 
-    
+
     def get_address(self,response:HtmlResponse) -> str :
         addrs_parts = response.xpath(
             '//a[contains(text(),"Download My App")]/ancestor::div[1]'
